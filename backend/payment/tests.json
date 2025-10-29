@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Test OPTIONS request for CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": "",
+      "bodyMatcher": "exact"
+    },
+    {
+      "name": "Test payment creation with valid data",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "privilegeId": 1,
+        "privilegeName": "VIP",
+        "price": "99.00",
+        "username": "TestUser"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "paymentUrl": "string",
+        "paymentId": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

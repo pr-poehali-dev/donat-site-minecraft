@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +14,7 @@ const privileges = [
     id: 1,
     name: 'VIP',
     price: '99₽',
+    priceValue: 99,
     color: 'bg-[hsl(var(--minecraft-grass))]',
     features: [
       'Приставка [VIP] перед ником',
@@ -24,6 +29,7 @@ const privileges = [
     id: 2,
     name: 'PREMIUM',
     price: '299₽',
+    priceValue: 299,
     color: 'bg-[hsl(var(--minecraft-sky))]',
     popular: true,
     features: [
@@ -40,6 +46,7 @@ const privileges = [
     id: 3,
     name: 'LEGEND',
     price: '599₽',
+    priceValue: 599,
     color: 'bg-[hsl(var(--minecraft-gold))]',
     features: [
       'Приставка [LEGEND] перед ником',
@@ -86,12 +93,68 @@ const rules = [
 
 export default function Index() {
   const [copiedIp, setCopiedIp] = useState(false);
+  const [selectedPrivilege, setSelectedPrivilege] = useState<any>(null);
+  const [username, setUsername] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
   const serverIp = 'play.myserver.ru';
 
   const copyIp = () => {
     navigator.clipboard.writeText(serverIp);
     setCopiedIp(true);
     setTimeout(() => setCopiedIp(false), 2000);
+  };
+
+  const handleBuyClick = (privilege: any) => {
+    setSelectedPrivilege(privilege);
+  };
+
+  const handlePurchase = async () => {
+    if (!username.trim()) {
+      toast({
+        title: 'Ошибка',
+        description: 'Введите ваш игровой ник',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('https://functions.poehali.dev/f51fb0f4-b3bf-49c5-9bc6-7db9f06a77f4', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          privilegeId: selectedPrivilege.id,
+          privilegeName: selectedPrivilege.name,
+          price: selectedPrivilege.priceValue.toFixed(2),
+          username: username.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        toast({
+          title: 'Ошибка оплаты',
+          description: data.error || 'Не удалось создать платёж',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось подключиться к серверу оплаты',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -167,6 +230,7 @@ export default function Index() {
                     ))}
                   </ul>
                   <Button
+                    onClick={() => handleBuyClick(priv)}
                     className={`w-full ${priv.color} hover:opacity-90 text-white font-bold text-lg py-6 border-4 border-[hsl(var(--minecraft-dark))] shadow-lg hover:scale-105 transition-transform`}
                   >
                     <Icon name="ShoppingCart" className="mr-2" size={20} />
@@ -225,6 +289,56 @@ export default function Index() {
           </div>
         </footer>
       </div>
+
+      <Dialog open={!!selectedPrivilege} onOpenChange={() => setSelectedPrivilege(null)}>
+        <DialogContent className="border-4 border-[hsl(var(--minecraft-dark))] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-extrabold text-[hsl(var(--minecraft-dark))]">
+              Покупка привилегии {selectedPrivilege?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Введите ваш игровой ник для активации привилегии на сервере
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="username" className="font-bold text-[hsl(var(--minecraft-dark))]">
+                Игровой ник
+              </Label>
+              <Input
+                id="username"
+                placeholder="Steve"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="border-2 border-[hsl(var(--minecraft-dark))]"
+                disabled={isLoading}
+              />
+            </div>
+            <div className="bg-[hsl(var(--minecraft-grass))]/10 p-4 rounded-lg border-2 border-[hsl(var(--minecraft-grass))]">
+              <p className="text-sm font-medium text-[hsl(var(--minecraft-dark))]">
+                К оплате: <span className="text-xl font-bold text-[hsl(var(--minecraft-grass))]">{selectedPrivilege?.price}</span>
+              </p>
+            </div>
+            <Button
+              onClick={handlePurchase}
+              disabled={isLoading}
+              className="w-full bg-[hsl(var(--minecraft-grass))] hover:bg-[hsl(var(--minecraft-grass))]/80 text-white font-bold text-lg py-6 border-4 border-[hsl(var(--minecraft-dark))] shadow-lg"
+            >
+              {isLoading ? (
+                <>
+                  <Icon name="Loader2" className="mr-2 animate-spin" size={20} />
+                  Переход к оплате...
+                </>
+              ) : (
+                <>
+                  <Icon name="CreditCard" className="mr-2" size={20} />
+                  Перейти к оплате
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
